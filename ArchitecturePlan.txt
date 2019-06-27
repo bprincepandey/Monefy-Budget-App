@@ -1,0 +1,32 @@
+Developing Architecture of the Monefy-Budget App
+------------------------------------------------------------------------
+1. Adding event handler for the select click button
+2. Getting input value when select is clicked 
+3. Adding the items value to internal DS
+4. Displaying the items values in the UI
+5. Calculate the total budget internally
+7. Update the total budget in UI
+
+STRUCTURING THE CODE USING MODULES
+--------------------------------------
+- Modules helps to encapsulate some data into privacy and expose other data publicly.
+- Module division: Type of task.
+					1. UI task 							: UI Module (UIController)
+					2. Internal calculation and upates	: Data Module(BugetController)
+					3. Ading Event Handlers(for clicks)	: Controller Module(Controller)
+
+USING MODULE PATTER
+------------------------
+- Using encapsulation(IIFE implementation ), we can code all three modules.
+- Object instance structure
+	- Each instance of input will have 3 things: id description, value.(the constructor of Expense/Income should have it)
+- Using prototype to hold commonly used function constructor i.e. Income and Expense.
+
+
+NAMING CONVENTIONS:
+==============================
+1. Functin Constructor: Function name should should start with capital letter.
+2. Normal function : Function name should start with small letter.
+3. Object property don't use "=" sysmbol to assign. It uses ":" sysmbol.
+4. Variable / private fields name should start with small letter.
+5. One space after if conditions/ after bunch of variable declarations.
