@@ -3,6 +3,8 @@
  *  Controller module : Controller          : EventListening
  *  data module       : BudgetController    : Internal calculations
  *  UI module         : UIController        : UI display functions
+ *
+ * Remove all comments if you dont feel like keeping them !!!
  ********************************************************************************/
 /*********************** BUDGET CONTROLLER CODE*********************************/
 var budgetController = (function() {
@@ -10,7 +12,22 @@ var budgetController = (function() {
     this.id = id;
     this.description = description;
     this.value = value;
+    this.percentage = -1; //storing percentage in prototype
   };
+
+  Expense.prototype.calcPercentage = function(totalIncome) {
+    if (totalIncome > 0) {
+      console.log(totalIncome);
+      this.percentage = Math.round((this.value / totalIncome) * 100);
+    } else {
+      this.percentage = -1;
+    }
+  };
+
+  Expense.prototype.getPercentage = function() {
+    return this.percentage;
+  };
+
   var Income = function(id, description, value) {
     this.id = id;
     this.description = description;
@@ -40,6 +57,7 @@ var budgetController = (function() {
     budget: 0,
     percentage: -1
   };
+
   return {
     addItem: function(type, des, val) {
       var newItem, id;
@@ -50,21 +68,43 @@ var budgetController = (function() {
       } else {
         id = 0; //initially when no item in array the id should be 0
       }
-
       //create new item based on inc or exp
       if (type === "exp") {
         newItem = new Expense(id, des, val);
       } else if (type === "inc") {
         newItem = new Income(id, des, val);
       }
-
       //push it into our datastructure
       data.allItems[type].push(newItem); //item added at end of array
       return newItem; //this return used to display in ui
     },
 
-    testing: function() {
-      console.log(data);
+    deleteItem: function(type, id) {
+      var ids;
+      //select which array we want then we take out the index no of the ID we want to delete
+      // map returns us the array and then we delete using splice method(used map for learning purpose)
+      ids = data.allItems[type].map(function(current) {
+        return current.id;
+      });
+      index = ids.indexOf(id);
+      if (index !== -1) {
+        data.allItems[type].splice(index, 1);
+      }
+    },
+
+    calculatePercentages: function() {
+      //iterate calcPercentage for each of the element in expense array.
+      data.allItems.exp.forEach(function(cur) {
+        cur.calcPercentage(data.totalBudget.inc);
+      });
+    },
+
+    getPercentages: function() {
+      //get percentage for all elem and return
+      var allPerc = data.allItems.exp.map(function(cur) {
+        return cur.getPercentage();
+      });
+      return allPerc; //new array of percentage
     },
 
     calculateBudget: function() {
@@ -92,6 +132,9 @@ var budgetController = (function() {
         totalExp: data.totalBudget.exp,
         percentage: data.percentage
       };
+    },
+    testing: function() {
+      console.log(data);
     }
   };
 })();
@@ -110,7 +153,9 @@ var UIController = (function() {
     budgetLabel: ".budget__value",
     incomeLabel: ".budget__income--value",
     expenseLabel: ".budget__expenses--value",
-    percentageLabel: ".budget__expenses--percentage"
+    percentageLabel: ".budget__expenses--percentage",
+    container: ".container",
+    expensesPercLabel: ".item__percentage"
   };
   return {
     getInput: function() {
@@ -129,11 +174,11 @@ var UIController = (function() {
       if (type === "inc") {
         element = DOMStrings.incomeContainer;
         html =
-          '<div class="item clearfix" id="income-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
+          '<div class="item clearfix" id="inc-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
       } else if (type === "exp") {
         element = DOMStrings.expenseContainer;
         html =
-          '<div class="item clearfix" id="expense-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
+          '<div class="item clearfix" id="exp-%id%"><div class="item__description">%description%</div><div class="right clearfix"><div class="item__value">%value%</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>';
       }
       //replace the placeholders with income and expense
       newHtml = html.replace("%id%", inpObj.id);
@@ -149,6 +194,34 @@ var UIController = (function() {
       document.querySelector(DOMStrings.inputValue).value = "";
       //putting cursor back to original position using : focus()
       document.querySelector(DOMStrings.inputDescription).focus();
+    },
+
+    deleteListItem: function(selectorID) {
+      //we just need the element-id for removing the element from UI
+      var el = document.getElementById(selectorID);
+      el.parentNode.removeChild(el);
+    },
+
+    displayPercentages: function(percentages) {
+      var fields = document.querySelectorAll(DOMStrings.expensesPercLabel);
+
+      //reusable callback function, instead of wrting own for loop, we can use it for other places too
+      var nodeListForEach = function(list, callback) {
+        for (var i = 0; i < list.length; i++) {
+          callback(list[i], i); // calling below function by passing current & index value
+        }
+      };
+
+      nodeListForEach(fields, function(current, index) {
+        //fields in a list : contain all nodes where we have percentage place holder
+        // for each of those places we displa its own percentage
+        //current: placeholder for that specific item and index is the current index of the nodelist
+        if (percentages[index] > 0) {
+          current.textContent = percentages[index] + "%";
+        } else {
+          current.textContent = "--";
+        }
+      });
     },
 
     displayBudget: function(obj) {
@@ -179,6 +252,9 @@ var Controller = (function(budgetCtrl, UICtrl) {
         ctrlAddItem();
       }
     });
+    document
+      .querySelector(DOM.container)
+      .addEventListener("click", ctrlDeleteItem);
   };
 
   var updateBudget = function() {
@@ -188,6 +264,15 @@ var Controller = (function(budgetCtrl, UICtrl) {
     var budgetObj = budgetCtrl.getBudget();
     //6. Displaying current budget after adding item
     UICtrl.displayBudget(budgetObj);
+  };
+
+  var updatePercentages = function() {
+    //1. calulate the percentage when we add/del new item
+    budgetCtrl.calculatePercentages();
+    //2. call from budget controller
+    var percentages = budgetCtrl.getPercentages();
+    //3. display in UI
+    UICtrl.displayPercentages(percentages);
   };
 
   //on click of tick mark button
@@ -204,10 +289,34 @@ var Controller = (function(budgetCtrl, UICtrl) {
 
       //4. Call updateBudget
       updateBudget();
+
+      //5. update percentage
+      updatePercentages();
     } else {
       alert("You have either missed description or the cost of the entry ....");
     }
   };
+
+  var ctrlDeleteItem = function(event) {
+    var itemId, splitID, type, ID;
+    itemId = event.target.parentNode.parentNode.parentNode.parentNode.id;
+
+    if (itemId) {
+      splitID = itemId.split("-");
+      type = splitID[0];
+      ID = parseInt(splitID[1]);
+
+      //1. DELETE the item from datastructure
+      budgetCtrl.deleteItem(type, ID);
+      //2. delete the item in UI(pass the container Id)
+      UICtrl.deleteListItem(itemId);
+      //3. UPDATE and SHOW the current budget
+      updateBudget();
+      //4. update percentage
+      updatePercentages();
+    }
+  };
+
   return {
     init: function() {
       console.log("Application Started.....");
