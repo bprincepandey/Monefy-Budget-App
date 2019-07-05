@@ -155,8 +155,39 @@ var UIController = (function() {
     expenseLabel: ".budget__expenses--value",
     percentageLabel: ".budget__expenses--percentage",
     container: ".container",
-    expensesPercLabel: ".item__percentage"
+    expensesPercLabel: ".item__percentage",
+    dateLabel: ".budget__title--month"
   };
+
+  var formatNumber = function(num, type) {
+    /*
+    + or - before number
+    round to exactly 2 decimal points
+    comma separating the thousands
+    syntax: str.substr(start[, length])
+     */
+    var numSplit, int, dec;
+    num = Math.abs(num);
+    num = num.toFixed(2);
+
+    numSplit = num.split(".");
+    int = numSplit[0];
+    dec = numSplit[1];
+
+    if (int.length > 3) {
+      int = int.substr(0, int.length - 3) + "," + int.substr(int.length - 3, 3);
+    }
+
+    return (type === "exp" ? "-" : "+") + " " + int + "." + dec;
+  };
+
+  //reusable callback function, instead of wrting own for loop, we can use it for other places too
+  var nodeListForEach = function(list, callback) {
+    for (var i = 0; i < list.length; i++) {
+      callback(list[i], i); // calling below function by passing current & index value
+    }
+  };
+
   return {
     getInput: function() {
       return {
@@ -168,6 +199,7 @@ var UIController = (function() {
     getDOMStrings: function() {
       return DOMStrings;
     },
+
     addListItem: function(inpObj, type) {
       var html, newHtml, element;
       //Create html placeholder
@@ -183,7 +215,10 @@ var UIController = (function() {
       //replace the placeholders with income and expense
       newHtml = html.replace("%id%", inpObj.id);
       newHtml = newHtml.replace("%description%", inpObj.description);
-      newHtml = newHtml.replace("%value%", inpObj.value);
+      newHtml = newHtml.replace(
+        "%value%",
+        formatNumber(inpObj.value, inpObj.type)
+      );
 
       //Insert html into the dom
       document.querySelector(element).insertAdjacentHTML("beforeend", newHtml);
@@ -205,13 +240,6 @@ var UIController = (function() {
     displayPercentages: function(percentages) {
       var fields = document.querySelectorAll(DOMStrings.expensesPercLabel);
 
-      //reusable callback function, instead of wrting own for loop, we can use it for other places too
-      var nodeListForEach = function(list, callback) {
-        for (var i = 0; i < list.length; i++) {
-          callback(list[i], i); // calling below function by passing current & index value
-        }
-      };
-
       nodeListForEach(fields, function(current, index) {
         //fields in a list : contain all nodes where we have percentage place holder
         // for each of those places we displa its own percentage
@@ -224,17 +252,65 @@ var UIController = (function() {
       });
     },
 
+    displayMonth: function() {
+      var now, year, month, monthArray;
+      monthArray = [
+        "January",
+        "February",
+        "March" + "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ];
+      now = new Date();
+      year = now.getFullYear();
+      month = now.getMonth(); // retuns month number (it is 0 based)
+
+      document.querySelector(DOMStrings.dateLabel).textContent =
+        monthArray[month] + ", " + year;
+    },
+
     displayBudget: function(obj) {
-      document.querySelector(DOMStrings.budgetLabel).textContent = obj.budget;
-      document.querySelector(DOMStrings.incomeLabel).textContent = obj.totalInc;
-      document.querySelector(DOMStrings.expenseLabel).textContent =
-        obj.totalExp;
+      var type;
+      obj.budget > 0 ? (type = "inc") : (type = "exp");
+      document.querySelector(DOMStrings.budgetLabel).textContent = formatNumber(
+        obj.budget,
+        type
+      );
+      document.querySelector(DOMStrings.incomeLabel).textContent = formatNumber(
+        obj.totalInc,
+        "inc"
+      );
+      document.querySelector(
+        DOMStrings.expenseLabel
+      ).textContent = formatNumber(obj.totalExp, "exp");
       if (obj.percentage > 0) {
         document.querySelector(DOMStrings.percentageLabel).textContent =
           obj.percentage + "%";
       } else {
         document.querySelector(DOMStrings.percentageLabel).textContent = "--";
       }
+    },
+
+    changedType: function() {
+      var fields = document.querySelectorAll(
+        DOMStrings.inputType +
+          "," +
+          DOMStrings.inputDescription +
+          "," +
+          DOMStrings.inputValue
+      );
+      //we pass the fields(nodelist) value to read one by one using a nodelistforeach method
+      nodeListForEach(fields, function(cur) {
+        cur.classList.toggle("red-focus");
+      });
+
+      document.querySelector(DOMStrings.inputbtn).classList.toggle("red");
     }
   };
 })();
@@ -255,6 +331,10 @@ var Controller = (function(budgetCtrl, UICtrl) {
     document
       .querySelector(DOM.container)
       .addEventListener("click", ctrlDeleteItem);
+    //event to change colour
+    document
+      .querySelector(DOM.inputType)
+      .addEventListener("change", UICtrl.changedType);
   };
 
   var updateBudget = function() {
@@ -320,6 +400,7 @@ var Controller = (function(budgetCtrl, UICtrl) {
   return {
     init: function() {
       console.log("Application Started.....");
+      UICtrl.displayMonth();
       UICtrl.displayBudget({
         budget: 0,
         totalInc: 0,
